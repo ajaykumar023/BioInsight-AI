@@ -1,0 +1,26 @@
+feature,transformed_value,shap_value,absolute_shap,effect_direction
+numerical__major_vessels,-0.6897153106074244,-0.7031793300769941,0.7031793300769941,Toward No Heart Disease
+categorical__chest_pain_type_4.0,1.0,0.5133986712892868,0.5133986712892868,Toward Heart Disease
+numerical__max_heart_rate,1.415099769078429,-0.4906544652887457,0.4906544652887457,Toward No Heart Disease
+categorical__thalassemia_7.0,0.0,-0.34462119373734884,0.34462119373734884,Toward No Heart Disease
+categorical__st_slope_2.0,0.0,-0.26194291379038276,0.26194291379038276,Toward No Heart Disease
+categorical__thalassemia_3.0,1.0,-0.2582705174383939,0.2582705174383939,Toward No Heart Disease
+categorical__sex_0.0,0.0,0.23845841852371602,0.23845841852371602,Toward Heart Disease
+categorical__sex_1.0,1.0,0.23805906971376303,0.23805906971376303,Toward Heart Disease
+categorical__st_slope_1.0,1.0,-0.23482878764949705,0.23482878764949705,Toward No Heart Disease
+numerical__st_depression,-0.8916273498556132,-0.14933433591493567,0.14933433591493567,Toward No Heart Disease
+categorical__chest_pain_type_3.0,0.0,0.14350614799856168,0.14350614799856168,Toward Heart Disease
+numerical__resting_blood_pressure,0.4003912806904277,0.13827913453551016,0.13827913453551016,Toward Heart Disease
+categorical__resting_ecg_2.0,1.0,0.12271162750528307,0.12271162750528307,Toward Heart Disease
+categorical__exercise_induced_angina_0.0,1.0,-0.09515095926433619,0.09515095926433619,Toward No Heart Disease
+categorical__exercise_induced_angina_1.0,0.0,-0.09476371193347237,0.09476371193347237,Toward No Heart Disease
+categorical__resting_ecg_0.0,0.0,0.08057354309683186,0.08057354309683186,Toward Heart Disease
+numerical__cholesterol,0.4012539552454338,0.0641173647190424,0.0641173647190424,Toward Heart Disease
+numerical__age,0.49568149367457554,-0.031183993121749833,0.031183993121749833,Toward No Heart Disease
+categorical__chest_pain_type_2.0,0.0,-0.02995195977028686,0.02995195977028686,Toward No Heart Disease
+categorical__chest_pain_type_1.0,0.0,0.025966998122263007,0.025966998122263007,Toward Heart Disease
+categorical__fasting_blood_sugar_1.0,0.0,0.01657904429119782,0.01657904429119782,Toward Heart Disease
+categorical__fasting_blood_sugar_0.0,1.0,0.016421725063034427,0.016421725063034427,Toward Heart Disease
+categorical__thalassemia_6.0,0.0,0.007235914137066915,0.007235914137066915,Toward Heart Disease
+categorical__st_slope_3.0,0.0,0.0060576536963437965,0.0060576536963437965,Toward Heart Disease
+categorical__resting_ecg_1.0,0.0,0.000777923992203655,0.000777923992203655,Toward Heart Disease

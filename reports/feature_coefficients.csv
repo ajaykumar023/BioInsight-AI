@@ -1,0 +1,26 @@
+feature,coefficient,absolute_coefficient,effect_direction
+numerical__major_vessels,1.1259925283188943,1.1259925283188943,Toward Heart Disease
+categorical__chest_pain_type_4.0,0.9686767382816733,0.9686767382816733,Toward Heart Disease
+categorical__thalassemia_7.0,0.8014446365984856,0.8014446365984856,Toward Heart Disease
+categorical__sex_0.0,-0.7226012682536849,0.7226012682536849,Toward No Heart Disease
+categorical__sex_1.0,0.7213911203447365,0.7213911203447365,Toward Heart Disease
+categorical__chest_pain_type_1.0,-0.6491749530565751,0.6491749530565751,Toward No Heart Disease
+categorical__st_slope_2.0,0.6091695669543785,0.6091695669543785,Toward Heart Disease
+categorical__thalassemia_3.0,-0.5614576466052041,0.5614576466052041,Toward No Heart Disease
+categorical__st_slope_1.0,-0.4892266409364522,0.4892266409364522,Toward No Heart Disease
+categorical__chest_pain_type_3.0,-0.4783538266618723,0.4783538266618723,Toward No Heart Disease
+numerical__max_heart_rate,-0.35867566163880005,0.35867566163880005,Toward No Heart Disease
+numerical__resting_blood_pressure,0.33821851275005455,0.33821851275005455,Toward Heart Disease
+categorical__exercise_induced_angina_0.0,-0.29734674770105063,0.29734674770105063,Toward No Heart Disease
+categorical__exercise_induced_angina_1.0,0.29613659979210116,0.29613659979210116,Toward Heart Disease
+categorical__thalassemia_6.0,-0.2411971379022305,0.2411971379022305,Toward No Heart Disease
+categorical__resting_ecg_2.0,0.23153137265147747,0.23153137265147747,Toward Heart Disease
+numerical__cholesterol,0.19659266081190346,0.19659266081190346,Toward Heart Disease
+numerical__st_depression,0.19191138469697963,0.19191138469697963,Toward Heart Disease
+categorical__chest_pain_type_2.0,0.15764189352782557,0.15764189352782557,Toward Heart Disease
+categorical__resting_ecg_0.0,-0.15494912134006125,0.15494912134006125,Toward No Heart Disease
+categorical__fasting_blood_sugar_1.0,-0.12753110993229091,0.12753110993229091,Toward No Heart Disease
+categorical__fasting_blood_sugar_0.0,0.12632096202334173,0.12632096202334173,Toward Heart Disease
+categorical__st_slope_3.0,-0.12115307392687592,0.12115307392687592,Toward No Heart Disease
+numerical__age,-0.08234750428293856,0.08234750428293856,Toward No Heart Disease
+categorical__resting_ecg_1.0,-0.0777923992203655,0.0777923992203655,Toward No Heart Disease
