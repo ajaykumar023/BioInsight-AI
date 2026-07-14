@@ -1,0 +1,1544 @@
+import sys
+from pathlib import Path
+
+import pandas as pd
+import streamlit as st
+
+
+# ==================================================
+# PROJECT PATH CONFIGURATION
+# ==================================================
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+
+# ==================================================
+# IMPORT BIOINSIGHT-AI BACKEND
+# ==================================================
+
+from src.explain import (
+    create_shap_explainer,
+    explain_patient,
+    extract_pipeline_components,
+    get_feature_names,
+    load_data,
+    load_model,
+    split_data,
+    transform_data,
+)
+
+
+# ==================================================
+# STREAMLIT PAGE CONFIGURATION
+# ==================================================
+
+st.set_page_config(
+    page_title="BioInsight-AI",
+    page_icon="🧬",
+    layout="wide",
+)
+
+
+# ==================================================
+# HUMAN-READABLE FEATURE NAMES
+# ==================================================
+
+def format_feature_name(feature_name):
+
+    feature_name = str(feature_name)
+
+    replacements = {
+        "numerical__age": "Age",
+
+        "numerical__resting_blood_pressure":
+            "Resting Blood Pressure",
+
+        "numerical__cholesterol":
+            "Cholesterol",
+
+        "numerical__max_heart_rate":
+            "Maximum Heart Rate",
+
+        "numerical__st_depression":
+            "ST Depression",
+
+        "numerical__major_vessels":
+            "Number of Major Vessels",
+
+        "categorical__sex_0.0":
+            "Sex: Female",
+
+        "categorical__sex_1.0":
+            "Sex: Male",
+
+        "categorical__chest_pain_type_1.0":
+            "Chest Pain: Typical Angina",
+
+        "categorical__chest_pain_type_2.0":
+            "Chest Pain: Atypical Angina",
+
+        "categorical__chest_pain_type_3.0":
+            "Chest Pain: Non-Anginal Pain",
+
+        "categorical__chest_pain_type_4.0":
+            "Chest Pain: Asymptomatic",
+
+        "categorical__fasting_blood_sugar_0.0":
+            "Fasting Blood Sugar ≤ 120 mg/dL",
+
+        "categorical__fasting_blood_sugar_1.0":
+            "Fasting Blood Sugar > 120 mg/dL",
+
+        "categorical__resting_ecg_0.0":
+            "Resting ECG: Normal",
+
+        "categorical__resting_ecg_1.0":
+            "Resting ECG: ST-T Abnormality",
+
+        "categorical__resting_ecg_2.0":
+            "Resting ECG: Ventricular Hypertrophy",
+
+        "categorical__exercise_induced_angina_0.0":
+            "Exercise-Induced Angina: No",
+
+        "categorical__exercise_induced_angina_1.0":
+            "Exercise-Induced Angina: Yes",
+
+        "categorical__st_slope_1.0":
+            "ST Slope: Upsloping",
+
+        "categorical__st_slope_2.0":
+            "ST Slope: Flat",
+
+        "categorical__st_slope_3.0":
+            "ST Slope: Downsloping",
+
+        "categorical__thalassemia_3.0":
+            "Thalassemia: Normal",
+
+        "categorical__thalassemia_6.0":
+            "Thalassemia: Fixed Defect",
+
+        "categorical__thalassemia_7.0":
+            "Thalassemia: Reversible Defect",
+    }
+
+    if feature_name in replacements:
+        return replacements[feature_name]
+
+    readable_name = (
+        feature_name
+        .replace("numerical__", "")
+        .replace("categorical__", "")
+        .replace("_", " ")
+        .title()
+    )
+
+    return readable_name
+
+
+# ==================================================
+# PREPARE SHAP CONTRIBUTION DATA
+# ==================================================
+
+def prepare_contribution_dataframe(contributions):
+
+    if contributions is None:
+        return pd.DataFrame()
+
+    if isinstance(contributions, pd.DataFrame):
+        df = contributions.copy()
+
+    else:
+        df = pd.DataFrame(contributions)
+
+    if df.empty:
+        return df
+
+    required_columns = {
+        "feature",
+        "shap_value",
+    }
+
+    if not required_columns.issubset(df.columns):
+        return pd.DataFrame()
+
+    df["feature"] = df["feature"].astype(str)
+
+    df["display_feature"] = (
+        df["feature"]
+        .apply(format_feature_name)
+    )
+
+    df["shap_value"] = pd.to_numeric(
+        df["shap_value"],
+        errors="coerce",
+    )
+
+    df = df.dropna(
+        subset=["shap_value"]
+    )
+
+    df["absolute_shap"] = (
+        df["shap_value"].abs()
+    )
+
+    return df
+
+
+# ==================================================
+# DISPLAY SHAP FACTOR TABLE
+# ==================================================
+
+def display_factor_table(
+    dataframe,
+    title,
+    direction,
+):
+
+    st.subheader(title)
+
+    if dataframe.empty:
+
+        st.info(
+            "No significant factors were available "
+            "for this direction."
+        )
+
+        return
+
+    display_df = dataframe[
+        [
+            "display_feature",
+            "shap_value",
+        ]
+    ].copy()
+
+    display_df.columns = [
+        "Clinical Factor",
+        "SHAP Contribution",
+    ]
+
+    display_df[
+        "SHAP Contribution"
+    ] = display_df[
+        "SHAP Contribution"
+    ].round(4)
+
+    if direction == "positive":
+
+        st.warning(
+            "Positive SHAP values push the model's "
+            "prediction toward the Heart Disease class."
+        )
+
+    else:
+
+        st.success(
+            "Negative SHAP values push the model's "
+            "prediction toward the No Heart Disease class."
+        )
+
+    st.dataframe(
+        display_df,
+        use_container_width=True,
+        hide_index=True,
+    )
+
+
+# ==================================================
+# DISPLAY CONTRIBUTION CHART
+# ==================================================
+
+def display_contribution_chart(
+    dataframe,
+    title,
+):
+
+    if dataframe.empty:
+        return
+
+    chart_df = dataframe[
+        [
+            "display_feature",
+            "shap_value",
+        ]
+    ].copy()
+
+    chart_df = chart_df.set_index(
+        "display_feature"
+    )
+
+    chart_df.columns = [
+        "SHAP Contribution"
+    ]
+
+    st.subheader(title)
+
+    st.bar_chart(
+        chart_df,
+        horizontal=True,
+        use_container_width=True,
+    )
+
+
+# ==================================================
+# MODEL OUTPUT BAND
+# ==================================================
+
+def get_model_output_band(probability):
+
+    if probability < 0.30:
+        return "Lower Model-Estimated Probability"
+
+    elif probability < 0.70:
+        return "Intermediate Model-Estimated Probability"
+
+    else:
+        return "Higher Model-Estimated Probability"
+
+
+# ==================================================
+# BUILD DOWNLOADABLE PATIENT REPORT
+# ==================================================
+
+def build_patient_report(
+    patient_data,
+    prediction_label,
+    heart_disease_probability,
+    predicted_confidence,
+    output_band,
+    positive_factors,
+    negative_factors,
+):
+
+    lines = []
+
+    lines.append("=" * 65)
+
+    lines.append(
+        "BIOINSIGHT-AI PATIENT ANALYSIS REPORT"
+    )
+
+    lines.append("=" * 65)
+
+    lines.append("")
+
+    lines.append(
+        "MODEL OUTPUT SUMMARY"
+    )
+
+    lines.append("-" * 65)
+
+    lines.append(
+        f"Prediction: {prediction_label}"
+    )
+
+    lines.append(
+        "Heart Disease Probability: "
+        f"{heart_disease_probability:.2%}"
+    )
+
+    lines.append(
+        "Prediction Confidence: "
+        f"{predicted_confidence:.2%}"
+    )
+
+    lines.append(
+        f"Model Output Band: {output_band}"
+    )
+
+    lines.append("")
+
+    lines.append(
+        "PATIENT INPUT DATA"
+    )
+
+    lines.append("-" * 65)
+
+    for feature, value in patient_data.items():
+
+        readable_feature = (
+            feature
+            .replace("_", " ")
+            .title()
+        )
+
+        lines.append(
+            f"{readable_feature}: {value}"
+        )
+
+    lines.append("")
+
+    lines.append(
+        "FACTORS PUSHING TOWARD HEART DISEASE"
+    )
+
+    lines.append("-" * 65)
+
+    if positive_factors.empty:
+
+        lines.append(
+            "No positive SHAP contributions available."
+        )
+
+    else:
+
+        for _, row in positive_factors.iterrows():
+
+            lines.append(
+                f"{row['display_feature']}: "
+                f"{row['shap_value']:.4f}"
+            )
+
+    lines.append("")
+
+    lines.append(
+        "FACTORS PUSHING TOWARD NO HEART DISEASE"
+    )
+
+    lines.append("-" * 65)
+
+    if negative_factors.empty:
+
+        lines.append(
+            "No negative SHAP contributions available."
+        )
+
+    else:
+
+        for _, row in negative_factors.iterrows():
+
+            lines.append(
+                f"{row['display_feature']}: "
+                f"{row['shap_value']:.4f}"
+            )
+
+    lines.append("")
+
+    lines.append("=" * 65)
+
+    lines.append("DISCLAIMER")
+
+    lines.append("-" * 65)
+
+    lines.append(
+        "BioInsight-AI is an educational machine learning "
+        "and explainable AI project."
+    )
+
+    lines.append(
+        "Model outputs and SHAP explanations are not medical "
+        "diagnoses and must not replace evaluation by qualified "
+        "healthcare professionals."
+    )
+
+    lines.append("=" * 65)
+
+    return "\n".join(lines)
+
+
+# ==================================================
+# LOAD AI ENGINE
+# ==================================================
+
+@st.cache_resource
+def load_ai_engine():
+
+    pipeline = load_model()
+
+    df = load_data()
+
+    X_train, X_test, _, _ = split_data(df)
+
+    preprocessor, model = (
+        extract_pipeline_components(
+            pipeline
+        )
+    )
+
+    feature_names = get_feature_names(
+        preprocessor
+    )
+
+    X_train_transformed, _ = transform_data(
+        preprocessor,
+        X_train,
+        X_test,
+        feature_names,
+    )
+
+    explainer = create_shap_explainer(
+        model,
+        X_train_transformed,
+    )
+
+    return (
+        pipeline,
+        explainer,
+        feature_names,
+    )
+
+
+# ==================================================
+# INITIALIZE AI ENGINE
+# ==================================================
+
+try:
+
+    (
+        pipeline,
+        explainer,
+        feature_names,
+    ) = load_ai_engine()
+
+    engine_ready = True
+
+except Exception as error:
+
+    pipeline = None
+    explainer = None
+    feature_names = None
+
+    engine_ready = False
+
+    st.error(
+        "The BioInsight-AI prediction engine "
+        "could not be loaded."
+    )
+
+    st.exception(error)
+
+
+# ==================================================
+# HEADER
+# ==================================================
+
+st.title("🧬 BioInsight-AI")
+
+st.subheader(
+    "Explainable AI for Heart Disease Risk Prediction"
+)
+
+st.write(
+    "Enter the patient's clinical information below. "
+    "BioInsight-AI uses a trained machine learning pipeline "
+    "to generate a heart disease prediction and explain "
+    "which clinical factors influenced the model output."
+)
+
+st.info(
+    "This application is an educational AI project. "
+    "The prediction and SHAP explanations are model outputs "
+    "and are not intended to replace professional medical diagnosis."
+)
+
+
+# ==================================================
+# ENGINE STATUS
+# ==================================================
+
+if engine_ready:
+
+    st.success(
+        "AI prediction and explainability engine "
+        "loaded successfully."
+    )
+
+else:
+
+    st.warning(
+        "The prediction engine is currently unavailable."
+    )
+
+
+# ==================================================
+# PATIENT INPUT FORM
+# ==================================================
+
+st.divider()
+
+st.header(
+    "Patient Clinical Information"
+)
+
+
+with st.form("patient_form"):
+
+    # ==============================================
+    # BASIC INFORMATION
+    # ==============================================
+
+    st.subheader(
+        "Basic Information"
+    )
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+
+        age = st.number_input(
+            "Age",
+            min_value=18,
+            max_value=100,
+            value=50,
+            step=1,
+        )
+
+    with col2:
+
+        sex_label = st.selectbox(
+            "Sex",
+            options=[
+                "Female",
+                "Male",
+            ],
+        )
+
+    with col3:
+
+        chest_pain_label = st.selectbox(
+            "Chest Pain Type",
+            options=[
+                "Typical Angina",
+                "Atypical Angina",
+                "Non-Anginal Pain",
+                "Asymptomatic",
+            ],
+        )
+
+
+    # ==============================================
+    # HEART MEASUREMENTS
+    # ==============================================
+
+    st.subheader(
+        "Heart Measurements"
+    )
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+
+        resting_blood_pressure = st.number_input(
+            "Resting Blood Pressure (mm Hg)",
+            min_value=70,
+            max_value=250,
+            value=120,
+            step=1,
+        )
+
+    with col2:
+
+        cholesterol = st.number_input(
+            "Cholesterol (mg/dL)",
+            min_value=80,
+            max_value=700,
+            value=200,
+            step=1,
+        )
+
+    with col3:
+
+        max_heart_rate = st.number_input(
+            "Maximum Heart Rate",
+            min_value=60,
+            max_value=250,
+            value=150,
+            step=1,
+        )
+
+
+    # ==============================================
+    # BLOOD SUGAR AND ECG
+    # ==============================================
+
+    st.subheader(
+        "Blood Sugar and ECG"
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        fasting_blood_sugar_label = st.selectbox(
+            "Fasting Blood Sugar > 120 mg/dL",
+            options=[
+                "No",
+                "Yes",
+            ],
+        )
+
+    with col2:
+
+        resting_ecg_label = st.selectbox(
+            "Resting ECG Result",
+            options=[
+                "Normal",
+                "ST-T Wave Abnormality",
+                "Left Ventricular Hypertrophy",
+            ],
+        )
+
+
+    # ==============================================
+    # EXERCISE INFORMATION
+    # ==============================================
+
+    st.subheader(
+        "Exercise Information"
+    )
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+
+        exercise_angina_label = st.selectbox(
+            "Exercise-Induced Angina",
+            options=[
+                "No",
+                "Yes",
+            ],
+        )
+
+    with col2:
+
+        st_depression = st.number_input(
+            "ST Depression (Oldpeak)",
+            min_value=0.0,
+            max_value=10.0,
+            value=1.0,
+            step=0.1,
+        )
+
+    with col3:
+
+        st_slope_label = st.selectbox(
+            "ST Segment Slope",
+            options=[
+                "Upsloping",
+                "Flat",
+                "Downsloping",
+            ],
+        )
+
+
+    # ==============================================
+    # ADVANCED CLINICAL FEATURES
+    # ==============================================
+
+    st.subheader(
+        "Advanced Clinical Features"
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+
+        major_vessels = st.selectbox(
+            "Number of Major Vessels",
+            options=[
+                0,
+                1,
+                2,
+                3,
+            ],
+        )
+
+    with col2:
+
+        thalassemia_label = st.selectbox(
+            "Thalassemia",
+            options=[
+                "Normal",
+                "Fixed Defect",
+                "Reversible Defect",
+            ],
+        )
+
+
+    # ==============================================
+    # SUBMIT BUTTON
+    # ==============================================
+
+    st.divider()
+
+    submitted = st.form_submit_button(
+        "Analyze Patient",
+        use_container_width=True,
+        type="primary",
+    )
+
+
+# ==================================================
+# DATASET VALUE MAPPINGS
+# ==================================================
+
+sex_map = {
+    "Female": 0,
+    "Male": 1,
+}
+
+
+chest_pain_map = {
+    "Typical Angina": 1,
+    "Atypical Angina": 2,
+    "Non-Anginal Pain": 3,
+    "Asymptomatic": 4,
+}
+
+
+fasting_blood_sugar_map = {
+    "No": 0,
+    "Yes": 1,
+}
+
+
+resting_ecg_map = {
+    "Normal": 0,
+    "ST-T Wave Abnormality": 1,
+    "Left Ventricular Hypertrophy": 2,
+}
+
+
+exercise_angina_map = {
+    "No": 0,
+    "Yes": 1,
+}
+
+
+st_slope_map = {
+    "Upsloping": 1,
+    "Flat": 2,
+    "Downsloping": 3,
+}
+
+
+thalassemia_map = {
+    "Normal": 3,
+    "Fixed Defect": 6,
+    "Reversible Defect": 7,
+}
+
+
+# ==================================================
+# ANALYZE PATIENT
+# ==================================================
+
+if submitted:
+
+    patient_data = {
+
+        "age":
+            float(age),
+
+        "sex":
+            sex_map[
+                sex_label
+            ],
+
+        "chest_pain_type":
+            chest_pain_map[
+                chest_pain_label
+            ],
+
+        "resting_blood_pressure":
+            float(
+                resting_blood_pressure
+            ),
+
+        "cholesterol":
+            float(
+                cholesterol
+            ),
+
+        "fasting_blood_sugar":
+            fasting_blood_sugar_map[
+                fasting_blood_sugar_label
+            ],
+
+        "resting_ecg":
+            resting_ecg_map[
+                resting_ecg_label
+            ],
+
+        "max_heart_rate":
+            float(
+                max_heart_rate
+            ),
+
+        "exercise_induced_angina":
+            exercise_angina_map[
+                exercise_angina_label
+            ],
+
+        "st_depression":
+            float(
+                st_depression
+            ),
+
+        "st_slope":
+            st_slope_map[
+                st_slope_label
+            ],
+
+        "major_vessels":
+            int(
+                major_vessels
+            ),
+
+        "thalassemia":
+            thalassemia_map[
+                thalassemia_label
+            ],
+    }
+
+
+    # ==============================================
+    # PATIENT SUMMARY
+    # ==============================================
+
+    st.divider()
+
+    st.header(
+        "Patient Summary"
+    )
+
+    summary_col1, summary_col2, summary_col3 = (
+        st.columns(3)
+    )
+
+
+    with summary_col1:
+
+        st.metric(
+            "Age",
+            f"{int(age)} years",
+        )
+
+        st.write(
+            "**Sex:**",
+            sex_label,
+        )
+
+
+    with summary_col2:
+
+        st.metric(
+            "Resting Blood Pressure",
+            f"{int(resting_blood_pressure)} mm Hg",
+        )
+
+        st.write(
+            "**Chest Pain Type:**",
+            chest_pain_label,
+        )
+
+
+    with summary_col3:
+
+        st.metric(
+            "Maximum Heart Rate",
+            int(max_heart_rate),
+        )
+
+        st.write(
+            "**Thalassemia:**",
+            thalassemia_label,
+        )
+
+
+    # ==============================================
+    # RESULTS
+    # ==============================================
+
+    st.divider()
+
+    st.header(
+        "Patient Analysis Results"
+    )
+
+
+    if not engine_ready:
+
+        st.error(
+            "Prediction cannot run because "
+            "the AI engine is unavailable."
+        )
+
+
+    else:
+
+        try:
+
+            with st.spinner(
+                "Running machine learning prediction "
+                "and SHAP explanation..."
+            ):
+
+                result = explain_patient(
+                    pipeline=pipeline,
+                    explainer=explainer,
+                    patient_data=patient_data,
+                    feature_names=feature_names,
+                    top_n=10,
+                )
+
+
+            st.success(
+                "Patient analysis completed successfully."
+            )
+
+
+            # ======================================
+            # EXTRACT PREDICTION RESULTS
+            # ======================================
+
+            prediction = result[
+                "prediction"
+            ]
+
+            prediction_label = result[
+                "prediction_label"
+            ]
+
+            heart_disease_probability = result[
+                "positive_class_probability"
+            ]
+
+            predicted_confidence = result[
+                "predicted_class_probability"
+            ]
+
+
+            # ======================================
+            # AI PREDICTION RESULT
+            # ======================================
+
+            st.subheader(
+                "AI Prediction Result"
+            )
+
+            col1, col2, col3 = (
+                st.columns(3)
+            )
+
+
+            with col1:
+
+                st.metric(
+                    "Prediction",
+                    prediction_label,
+                )
+
+
+            with col2:
+
+                st.metric(
+                    "Heart Disease Probability",
+                    f"{heart_disease_probability:.1%}",
+                )
+
+
+            with col3:
+
+                st.metric(
+                    "Prediction Confidence",
+                    f"{predicted_confidence:.1%}",
+                )
+
+
+            # ======================================
+            # PROBABILITY BAR
+            # ======================================
+
+            st.subheader(
+                "Model-Estimated Heart Disease Probability"
+            )
+
+            st.progress(
+                heart_disease_probability,
+                text=(
+                    "Heart Disease Probability: "
+                    f"{heart_disease_probability:.1%}"
+                ),
+            )
+
+
+            if prediction == 1:
+
+                st.warning(
+                    "The machine learning model classified "
+                    "this patient's clinical pattern as the "
+                    "Heart Disease class."
+                )
+
+            else:
+
+                st.success(
+                    "The machine learning model classified "
+                    "this patient's clinical pattern as the "
+                    "No Heart Disease class."
+                )
+
+
+            # ======================================
+            # MODEL OUTPUT BAND
+            # ======================================
+
+            output_band = (
+                get_model_output_band(
+                    heart_disease_probability
+                )
+            )
+
+            st.subheader(
+                "Model Output Summary"
+            )
+
+            output_col1, output_col2 = (
+                st.columns(2)
+            )
+
+
+            with output_col1:
+
+                st.metric(
+                    "Model Output Band",
+                    output_band,
+                )
+
+
+            with output_col2:
+
+                st.metric(
+                    "Estimated Positive-Class Probability",
+                    f"{heart_disease_probability:.1%}",
+                )
+
+
+            st.caption(
+                "The model output band is a simplified "
+                "presentation of the machine-learning "
+                "probability. It is not a validated "
+                "medical risk category."
+            )
+
+
+            # ======================================
+            # SHAP EXPLANATION
+            # ======================================
+
+            st.divider()
+
+            st.header(
+                "Why Did the AI Make This Prediction?"
+            )
+
+            st.write(
+                "SHAP values estimate how each transformed "
+                "model feature influenced this individual "
+                "prediction. Positive values push the model "
+                "output toward the Heart Disease class, "
+                "while negative values push the output "
+                "toward the No Heart Disease class."
+            )
+
+
+            all_contributions = (
+                prepare_contribution_dataframe(
+                    result.get(
+                        "all_contributions"
+                    )
+                )
+            )
+
+
+            if all_contributions.empty:
+
+                st.warning(
+                    "The prediction was generated successfully, "
+                    "but no valid SHAP contribution data "
+                    "was returned by the explanation engine."
+                )
+
+
+            else:
+
+                # ==================================
+                # POSITIVE FACTORS
+                # ==================================
+
+                positive_factors = (
+                    all_contributions[
+                        all_contributions[
+                            "shap_value"
+                        ] > 0
+                    ]
+                    .sort_values(
+                        "shap_value",
+                        ascending=False,
+                    )
+                    .head(5)
+                )
+
+
+                # ==================================
+                # NEGATIVE FACTORS
+                # ==================================
+
+                negative_factors = (
+                    all_contributions[
+                        all_contributions[
+                            "shap_value"
+                        ] < 0
+                    ]
+                    .sort_values(
+                        "shap_value",
+                        ascending=True,
+                    )
+                    .head(5)
+                )
+
+
+                # ==================================
+                # MOST INFLUENTIAL FACTOR
+                # ==================================
+
+                st.subheader(
+                    "Most Influential Factors"
+                )
+
+
+                strongest_factor = (
+                    all_contributions
+                    .sort_values(
+                        "absolute_shap",
+                        ascending=False,
+                    )
+                    .iloc[0]
+                )
+
+
+                strongest_feature = (
+                    strongest_factor[
+                        "display_feature"
+                    ]
+                )
+
+
+                strongest_shap = (
+                    strongest_factor[
+                        "shap_value"
+                    ]
+                )
+
+
+                if strongest_shap > 0:
+
+                    st.warning(
+                        f"The strongest model influence was "
+                        f"**{strongest_feature}**, which pushed "
+                        f"the prediction toward the "
+                        f"Heart Disease class."
+                    )
+
+                else:
+
+                    st.success(
+                        f"The strongest model influence was "
+                        f"**{strongest_feature}**, which pushed "
+                        f"the prediction toward the "
+                        f"No Heart Disease class."
+                    )
+
+
+                # ==================================
+                # POSITIVE / NEGATIVE TABLES
+                # ==================================
+
+                col1, col2 = st.columns(2)
+
+
+                with col1:
+
+                    display_factor_table(
+                        positive_factors,
+                        "Factors Toward Heart Disease",
+                        "positive",
+                    )
+
+
+                with col2:
+
+                    display_factor_table(
+                        negative_factors,
+                        "Factors Toward No Heart Disease",
+                        "negative",
+                    )
+
+
+                # ==================================
+                # CONTRIBUTION CHARTS
+                # ==================================
+
+                st.divider()
+
+                st.header(
+                    "Patient-Level SHAP Contribution Charts"
+                )
+
+                col1, col2 = st.columns(2)
+
+
+                with col1:
+
+                    display_contribution_chart(
+                        positive_factors,
+                        "Positive Contributions",
+                    )
+
+
+                with col2:
+
+                    display_contribution_chart(
+                        negative_factors,
+                        "Negative Contributions",
+                    )
+
+
+                # ==================================
+                # TOP OVERALL MODEL INFLUENCES
+                # ==================================
+
+                st.divider()
+
+                st.subheader(
+                    "Top Overall Model Influences"
+                )
+
+
+                top_overall = (
+                    all_contributions
+                    .sort_values(
+                        "absolute_shap",
+                        ascending=False,
+                    )
+                    .head(10)
+                    .copy()
+                )
+
+
+                top_overall_display = (
+                    top_overall[
+                        [
+                            "display_feature",
+                            "shap_value",
+                            "absolute_shap",
+                        ]
+                    ]
+                    .copy()
+                )
+
+
+                top_overall_display.columns = [
+                    "Clinical Factor",
+                    "SHAP Contribution",
+                    "Influence Magnitude",
+                ]
+
+
+                top_overall_display[
+                    "SHAP Contribution"
+                ] = (
+                    top_overall_display[
+                        "SHAP Contribution"
+                    ]
+                    .round(4)
+                )
+
+
+                top_overall_display[
+                    "Influence Magnitude"
+                ] = (
+                    top_overall_display[
+                        "Influence Magnitude"
+                    ]
+                    .round(4)
+                )
+
+
+                st.dataframe(
+                    top_overall_display,
+                    use_container_width=True,
+                    hide_index=True,
+                )
+
+
+                # ==================================
+                # DOWNLOAD PATIENT REPORT
+                # ==================================
+
+                st.divider()
+
+                st.header(
+                    "Download Patient Analysis Report"
+                )
+
+
+                patient_report = (
+                    build_patient_report(
+
+                        patient_data=
+                            patient_data,
+
+                        prediction_label=
+                            prediction_label,
+
+                        heart_disease_probability=
+                            heart_disease_probability,
+
+                        predicted_confidence=
+                            predicted_confidence,
+
+                        output_band=
+                            output_band,
+
+                        positive_factors=
+                            positive_factors,
+
+                        negative_factors=
+                            negative_factors,
+                    )
+                )
+
+
+                st.write(
+                    "Download a text summary containing "
+                    "the model prediction, probability, "
+                    "patient inputs, SHAP explanation "
+                    "factors, and project disclaimer."
+                )
+
+
+                st.download_button(
+                    label=
+                        "Download Analysis Report",
+
+                    data=
+                        patient_report,
+
+                    file_name=
+                        "bioinsight_ai_patient_report.txt",
+
+                    mime=
+                        "text/plain",
+
+                    use_container_width=True,
+
+                    type="primary",
+                )
+
+
+            # ======================================
+            # PATIENT DATA
+            # ======================================
+
+            st.divider()
+
+
+            with st.expander(
+                "View Patient Data Sent to the Model"
+            ):
+
+                st.json(
+                    patient_data
+                )
+
+
+            # ======================================
+            # AI ENGINE OUTPUT DETAILS
+            # ======================================
+
+            with st.expander(
+                "View AI Engine Output Details"
+            ):
+
+                st.write(
+                    "Prediction Class:",
+                    result[
+                        "prediction"
+                    ],
+                )
+
+
+                st.write(
+                    "Prediction Label:",
+                    result[
+                        "prediction_label"
+                    ],
+                )
+
+
+                st.write(
+                    "Positive Class Probability:",
+                    result[
+                        "positive_class_probability"
+                    ],
+                )
+
+
+                st.write(
+                    "Predicted Class Confidence:",
+                    result[
+                        "predicted_class_probability"
+                    ],
+                )
+
+
+                st.write(
+                    "Number of SHAP Contributions:",
+                    len(
+                        result[
+                            "all_contributions"
+                        ]
+                    ),
+                )
+
+
+                st.write(
+                    "Raw SHAP Contribution Data"
+                )
+
+
+                if not all_contributions.empty:
+
+                    st.dataframe(
+                        all_contributions,
+                        use_container_width=True,
+                    )
+
+
+        except Exception as error:
+
+            st.error(
+                "An error occurred while analyzing "
+                "the patient."
+            )
+
+            st.exception(error)
+
+
+# ==================================================
+# FOOTER
+# ==================================================
+
+st.divider()
+
+st.caption(
+    "BioInsight-AI | Machine Learning + Explainable AI "
+    "| Educational and research use only"
+)
