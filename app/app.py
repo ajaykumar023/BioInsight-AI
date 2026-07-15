@@ -1,3 +1,4 @@
+import time
 import sys
 from pathlib import Path
 
@@ -41,49 +42,121 @@ st.set_page_config(
     layout="wide",
 )
 # ==================================================
+# CUSTOM CSS
+# ==================================================
+
+st.markdown(
+    """
+<style>
+
+/* Main background */
+.stApp{
+    background-color:#0E1117;
+}
+
+/* Metric cards */
+div[data-testid="metric-container"]{
+    background:#1B1F2A;
+    border:1px solid #31333F;
+    padding:18px;
+    border-radius:14px;
+    box-shadow:0 4px 15px rgba(0,0,0,0.25);
+}
+
+/* Buttons */
+.stButton>button{
+    width:100%;
+    border-radius:10px;
+    font-weight:bold;
+}
+
+/* Download button */
+.stDownloadButton>button{
+    width:100%;
+    border-radius:10px;
+    font-weight:bold;
+}
+
+/* Expanders */
+.streamlit-expanderHeader{
+    font-size:18px;
+    font-weight:600;
+}
+
+/* Sidebar */
+section[data-testid="stSidebar"]{
+    background:#171A23;
+}
+
+/* Tables */
+[data-testid="stDataFrame"]{
+    border-radius:10px;
+}
+
+/* Headings */
+h1,h2,h3{
+    color:white;
+}
+
+/* Success boxes */
+div[data-baseweb="notification"]{
+    border-radius:12px;
+}
+
+</style>
+""",
+    unsafe_allow_html=True,
+)
+# ==================================================
 # SIDEBAR
 # ==================================================
 
 with st.sidebar:
 
-    st.title("🧬 BioInsight-AI")
-
+    st.markdown("# 🧬 BioInsight-AI")
     st.caption("Version 1.0")
 
     st.divider()
 
-    st.subheader("AI Engine")
+    st.subheader("🧠 AI Engine")
 
-    st.success("✔ Logistic Regression")
+    st.success("✅ Logistic Regression")
+    st.success("✅ SHAP Explainability")
 
-    st.success("✔ SHAP Explainability")
-
-    st.info("Accuracy: 86.9%")
-
-    st.info("Dataset: 303 Patients")
-
-    st.divider()
-
-    st.subheader("Developer")
-
-    st.write("**M Ajay Kumar & Amogh Amarapur**")
-
-    st.write("AI + Biotech")
-
-    st.success("🟢 Production Ready")
-
-    st.divider()
-
-    st.subheader("Project")
-
-    st.write("Heart Disease Prediction")
-
-    st.write("Explainable Artificial Intelligence")
-
-    st.caption(
-        "Educational & Research Project"
+    st.metric(
+        label="Model Accuracy",
+        value="86.9%"
     )
 
+    st.metric(
+        label="Dataset Size",
+        value="303 Patients"
+    )
+
+    st.divider()
+
+    st.subheader("📋 Navigation")
+
+    page = st.radio(
+        "",
+        [
+            "🏠 Home",
+            "🩺 Patient Prediction",
+            "📊 Explainability",
+            "📈 Model Performance",
+            "👨‍💻 Developers",
+        ]
+    )
+
+    st.divider()
+
+    st.info(
+        """
+This project demonstrates Explainable AI for Heart Disease Prediction.
+
+Developed for educational and research purposes.
+"""
+    )
 # ==================================================
 # HUMAN-READABLE FEATURE NAMES
 # ==================================================
@@ -559,28 +632,56 @@ except Exception as error:
 # HEADER
 # ==================================================
 
-st.title("🧬 BioInsight-AI")
+st.markdown(
+    """
+# 🧬 BioInsight-AI
 
-st.caption(
-    "Explainable Artificial Intelligence for Heart Disease Prediction"
+### Explainable Artificial Intelligence for Heart Disease Prediction
+
+A clinical decision-support application powered by **Machine Learning**
+and **SHAP Explainability**.
+
+---
+"""
 )
 
-st.subheader(
-    "Clinical Decision Support using Machine Learning and SHAP Explainability"
+col1, col2, col3, col4 = st.columns(4)
+
+with col1:
+    st.metric(
+    "Model",
+    "Logistic"
 )
 
-st.write(
-    "Enter the patient's clinical information below. "
-    "BioInsight-AI uses a trained machine learning pipeline "
-    "to generate a heart disease prediction and explain "
-    "which clinical factors influenced the model output."
-)
+with col2:
+    st.metric(
+        "Accuracy",
+        "86.9%"
+    )
+
+with col3:
+    st.metric(
+        "Dataset",
+        "303 Patients"
+    )
+
+with col4:
+    st.metric(
+        "Explainability",
+        "SHAP AI"
+    )
 
 st.info(
-    "This application is an educational AI project. "
-    "The prediction and SHAP explanations are model outputs "
-    "and are not intended to replace professional medical diagnosis."
+    """
+This application predicts the likelihood of heart disease and explains
+which clinical features influenced the prediction.
+
+⚠️ Educational use only. It is **not** a substitute for professional
+medical diagnosis.
+"""
 )
+
+st.divider()
 
 
 # ==================================================
@@ -607,32 +708,32 @@ else:
 
 st.divider()
 
-st.header(
-    "Patient Clinical Information"
-)
-
-
 with st.form("patient_form"):
+    st.header("🩺 Patient Clinical Information")
 
-    # ==============================================
-    # BASIC INFORMATION
-    # ==============================================
-
-    st.subheader(
-        "Basic Information"
+    st.caption(
+    "Enter the patient's clinical measurements below. "
+    "These values will be used by the trained AI model to estimate heart disease probability."
     )
 
+    st.divider()
+
+
+        # ==============================================
+        # BASIC INFORMATION
+        # ==============================================
+
+    st.subheader("👤 Patient Demographics")
     col1, col2, col3 = st.columns(3)
 
     with col1:
-
         age = st.number_input(
             "Age",
             min_value=18,
             max_value=100,
             value=50,
             step=1,
-        )
+            )
 
     with col2:
 
@@ -641,8 +742,8 @@ with st.form("patient_form"):
             options=[
                 "Female",
                 "Male",
-            ],
-        )
+                ],
+            )
 
     with col3:
 
@@ -661,10 +762,7 @@ with st.form("patient_form"):
     # HEART MEASUREMENTS
     # ==============================================
 
-    st.subheader(
-        "Heart Measurements"
-    )
-
+    st.subheader("❤️ Heart Measurements")
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -702,10 +800,9 @@ with st.form("patient_form"):
     # BLOOD SUGAR AND ECG
     # ==============================================
 
-    st.subheader(
-        "Blood Sugar and ECG"
-    )
+    st.divider()
 
+    st.subheader("🩸 Blood Sugar & ECG")
     col1, col2 = st.columns(2)
 
     with col1:
@@ -734,10 +831,9 @@ with st.form("patient_form"):
     # EXERCISE INFORMATION
     # ==============================================
 
-    st.subheader(
-        "Exercise Information"
-    )
+    st.divider()
 
+    st.subheader("🏃 Exercise Information")
     col1, col2, col3 = st.columns(3)
 
     with col1:
@@ -776,10 +872,9 @@ with st.form("patient_form"):
     # ADVANCED CLINICAL FEATURES
     # ==============================================
 
-    st.subheader(
-        "Advanced Clinical Features"
-    )
+    st.divider()
 
+    st.subheader("🧬 Advanced Clinical Features")
     col1, col2 = st.columns(2)
 
     with col1:
@@ -811,9 +906,11 @@ with st.form("patient_form"):
     # ==============================================
 
     st.divider()
-
+    st.info(
+    "Please verify that all patient measurements are entered correctly before running the AI analysis."
+    )
     submitted = st.form_submit_button(
-        "Analyze Patient",
+        label="🔍 Analyze Patient",
         width="stretch",
         type="primary",
     )
@@ -1019,19 +1116,43 @@ if submitted:
     else:
 
         try:
+            import time
 
-            with st.spinner(
-                "Running machine learning prediction "
-                "and SHAP explanation..."
-            ):
+            status = st.empty()
 
-                result = explain_patient(
-                    pipeline=pipeline,
-                    explainer=explainer,
-                    patient_data=patient_data,
-                    feature_names=feature_names,
-                    top_n=10,
-                )
+            status.info("🧠 Initializing BioInsight-AI...")
+            time.sleep(0.4)
+
+            status.info("📂 Loading trained Logistic Regression model...")
+            time.sleep(0.4)
+
+            status.info("🧪 Validating patient information...")
+            time.sleep(0.4)
+
+            status.info("⚙️ Preprocessing clinical features...")
+            time.sleep(0.4)
+
+            status.info("❤️ Estimating heart disease probability...")
+            time.sleep(0.4)
+
+            status.info("🧬 Computing SHAP explanations...")
+            time.sleep(0.5)
+
+            status.info("📄 Preparing clinical report...")
+            time.sleep(0.5)
+
+            result = explain_patient(
+                pipeline=pipeline,
+                explainer=explainer,
+                patient_data=patient_data,
+                feature_names=feature_names,
+                top_n=10,
+            )
+
+            status.success("✅ Analysis Complete!")
+            time.sleep(0.5)
+
+            status.empty()
 
 
             st.success(
@@ -1607,16 +1728,12 @@ if submitted:
 # FOOTER
 # ==================================================
 
-st.divider()
-
-st.divider()
-
 st.markdown(
     """
 ---
 ### 🧬 BioInsight-AI
 
-Developed by **Ajay Kumar** & **Amogh Amarapur**
+Developed by **M Ajay Kumar** & **Amogh Amarapur**
 
 **Machine Learning:** Logistic Regression
 
