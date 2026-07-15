@@ -40,7 +40,49 @@ st.set_page_config(
     page_icon="🧬",
     layout="wide",
 )
+# ==================================================
+# SIDEBAR
+# ==================================================
 
+with st.sidebar:
+
+    st.title("🧬 BioInsight-AI")
+
+    st.caption("Version 1.0")
+
+    st.divider()
+
+    st.subheader("AI Engine")
+
+    st.success("✔ Logistic Regression")
+
+    st.success("✔ SHAP Explainability")
+
+    st.info("Accuracy: 86.9%")
+
+    st.info("Dataset: 303 Patients")
+
+    st.divider()
+
+    st.subheader("Developer")
+
+    st.write("**M Ajay Kumar & Amogh Amarapur**")
+
+    st.write("AI + Biotech")
+
+    st.success("🟢 Production Ready")
+
+    st.divider()
+
+    st.subheader("Project")
+
+    st.write("Heart Disease Prediction")
+
+    st.write("Explainable Artificial Intelligence")
+
+    st.caption(
+        "Educational & Research Project"
+    )
 
 # ==================================================
 # HUMAN-READABLE FEATURE NAMES
@@ -244,7 +286,7 @@ def display_factor_table(
 
     st.dataframe(
         display_df,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
     )
 
@@ -281,7 +323,7 @@ def display_contribution_chart(
     st.bar_chart(
         chart_df,
         horizontal=True,
-        use_container_width=True,
+        width="stretch",
     )
 
 
@@ -519,8 +561,12 @@ except Exception as error:
 
 st.title("🧬 BioInsight-AI")
 
+st.caption(
+    "Explainable Artificial Intelligence for Heart Disease Prediction"
+)
+
 st.subheader(
-    "Explainable AI for Heart Disease Risk Prediction"
+    "Clinical Decision Support using Machine Learning and SHAP Explainability"
 )
 
 st.write(
@@ -768,7 +814,7 @@ with st.form("patient_form"):
 
     submitted = st.form_submit_button(
         "Analyze Patient",
-        use_container_width=True,
+        width="stretch",
         type="primary",
     )
 
@@ -1009,48 +1055,73 @@ if submitted:
                 "positive_class_probability"
             ]
 
-            predicted_confidence = result[
+            predicted_class_probability = result[
                 "predicted_class_probability"
             ]
-
 
             # ======================================
             # AI PREDICTION RESULT
             # ======================================
+            st.subheader("AI Prediction Dashboard")
 
-            st.subheader(
-                "AI Prediction Result"
-            )
+            col1, col2, col3 = st.columns(3)
 
-            col1, col2, col3 = (
-                st.columns(3)
-            )
-
+            # ==========================================
+            # PREDICTION
+            # ==========================================
 
             with col1:
 
+                if prediction == 1:
+                    st.error("❤️ Heart Disease Detected")
+                else:
+                    st.success("💚 No Heart Disease")
+
                 st.metric(
-                    "Prediction",
-                    prediction_label,
+                    label="Prediction",
+                    value=prediction_label,
                 )
 
+            # ==========================================
+            # PROBABILITY
+            # ==========================================
 
             with col2:
 
                 st.metric(
-                    "Heart Disease Probability",
-                    f"{heart_disease_probability:.1%}",
+                    label="Risk Probability",
+                    value=f"{heart_disease_probability:.1%}",
                 )
 
+                if heart_disease_probability < 0.30:
+                    st.success("🟢 Low Risk")
+
+                elif heart_disease_probability < 0.70:
+                    st.warning("🟡 Moderate Risk")
+
+                else:
+                    st.error("🔴 High Risk")
+
+            # ==========================================
+            # CONFIDENCE
+            # ==========================================
 
             with col3:
 
                 st.metric(
-                    "Prediction Confidence",
-                    f"{predicted_confidence:.1%}",
+                    label="Prediction Confidence",
+                    value=f"{predicted_class_probability:.1%}",
                 )
 
+                if predicted_class_probability >= 0.90:
+                    st.success("Very High")
 
+                elif predicted_class_probability >= 0.70:
+                    st.info("Good")
+
+                else:
+                    st.warning("Low")
+            
             # ======================================
             # PROBABILITY BAR
             # ======================================
@@ -1373,7 +1444,7 @@ if submitted:
 
                 st.dataframe(
                     top_overall_display,
-                    use_container_width=True,
+                    width="stretch",
                     hide_index=True,
                 )
 
@@ -1402,7 +1473,7 @@ if submitted:
                             heart_disease_probability,
 
                         predicted_confidence=
-                            predicted_confidence,
+                        predicted_class_probability,
 
                         output_band=
                             output_band,
@@ -1437,7 +1508,7 @@ if submitted:
                     mime=
                         "text/plain",
 
-                    use_container_width=True,
+                    width="stretch",
 
                     type="primary",
                 )
@@ -1518,7 +1589,7 @@ if submitted:
 
                     st.dataframe(
                         all_contributions,
-                        use_container_width=True,
+                        width="stretch",
                     )
 
 
@@ -1538,7 +1609,23 @@ if submitted:
 
 st.divider()
 
-st.caption(
-    "BioInsight-AI | Machine Learning + Explainable AI "
-    "| Educational and research use only"
+st.divider()
+
+st.markdown(
+    """
+---
+### 🧬 BioInsight-AI
+
+Developed by **Ajay Kumar** & **Amogh Amarapur**
+
+**Machine Learning:** Logistic Regression
+
+**Explainability:** SHAP (SHapley Additive Explanations)
+
+**Purpose:** Educational, Research & Demonstration
+
+⚠ This application is **not** intended to replace professional medical diagnosis.
+
+Version **1.0**
+"""
 )
