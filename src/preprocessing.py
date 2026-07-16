@@ -10,12 +10,9 @@ from sklearn.model_selection import train_test_split
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-RAW_DATA_PATH = (
-    PROJECT_ROOT
-    / "data"
-    / "raw"
-    / "heart_disease.csv"
-)
+RAW_DATASETS = [
+    PROJECT_ROOT / "data" / "raw" / "heart_disease_uci.csv",
+]
 
 PROCESSED_DATA_PATH = (
     PROJECT_ROOT
@@ -52,13 +49,36 @@ COLUMNS = [
 # --------------------------------------------------
 
 def load_data():
-    """Load the raw Cleveland Heart Disease dataset."""
+    """Load and merge all UCI Heart Disease datasets."""
 
-    df = pd.read_csv(
-        RAW_DATA_PATH,
-        names=COLUMNS,
-        na_values="?",
+    dfs = []
+
+    for path in RAW_DATASETS:
+        print(f"Loading {path.name}")
+
+        df = pd.read_csv(path, na_values="?")
+        df = df.rename(columns={
+            "cp": "chest_pain_type",
+            "trestbps": "resting_blood_pressure",
+            "chol": "cholesterol",
+            "fbs": "fasting_blood_sugar",
+            "restecg": "resting_ecg",
+            "thalch": "max_heart_rate",
+            "exang": "exercise_induced_angina",
+            "oldpeak": "st_depression",
+            "slope": "st_slope",
+            "ca": "major_vessels",
+            "thal": "thalassemia",
+            "num": "target",
+        })
+        dfs.append(df)
+
+    df = pd.concat(
+        dfs,
+        ignore_index=True,
     )
+
+    print(f"\nCombined dataset shape: {df.shape}")
 
     return df
 
@@ -89,26 +109,40 @@ def clean_data(df):
     # 0 = No Heart Disease
     # 1, 2, 3, 4 = Heart Disease Present
 
-    df["target"] = (df["target"] > 0).astype(int)
-
-    # Columns containing missing values
-    missing_columns = [
+    df["target"] = pd.to_numeric(df["target"], errors="coerce")
+    # ---------- Numeric Columns ----------
+    numeric_cols = [
+        "resting_blood_pressure",
+        "cholesterol",
+        "max_heart_rate",
+        "st_depression",
         "major_vessels",
+    ]
+
+    for col in numeric_cols:
+        df[col] = pd.to_numeric(df[col], errors="coerce")
+        df[col] = df[col].fillna(df[col].median())
+
+
+    # ---------- Categorical Columns ----------
+    categorical_cols = [
+        "fasting_blood_sugar",
+        "resting_ecg",
+        "exercise_induced_angina",
+        "st_slope",
         "thalassemia",
     ]
 
-    # Fill missing values using median
-    for column in missing_columns:
+    for col in categorical_cols:
+        df[col] = df[col].fillna(df[col].mode()[0])
 
-        median_value = df[column].median()
-
-        df[column] = df[column].fillna(median_value)
+    # Convert target to binary
+    df["target"] = (df["target"] > 0).astype(int)
 
     print("\nMissing values after cleaning:")
     print(df.isnull().sum())
 
     return df
-
 
 # --------------------------------------------------
 # VALIDATE CLEANED DATASET

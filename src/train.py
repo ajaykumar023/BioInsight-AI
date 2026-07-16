@@ -19,8 +19,9 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import (
     StratifiedKFold,
-    cross_val_score,
+    cross_val_score,    
     train_test_split,
+    GridSearchCV,
 )
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -33,11 +34,11 @@ from sklearn.svm import SVC
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-RAW_DATA_PATH = (
+DATA_PATH = (
     PROJECT_ROOT
     / "data"
-    / "raw"
-    / "heart_disease.csv"
+    / "processed"
+    / "heart_disease_clean.csv"
 )
 
 MODEL_PATH = (
@@ -117,19 +118,7 @@ CATEGORICAL_FEATURES = [
 # --------------------------------------------------
 
 def load_data():
-
-    df = pd.read_csv(
-        RAW_DATA_PATH,
-        names=COLUMNS,
-        na_values="?",
-    )
-
-    df = df.drop_duplicates().reset_index(drop=True)
-
-    df["target"] = (
-        df["target"] > 0
-    ).astype(int)
-
+    df = pd.read_csv(DATA_PATH)
     return df
 
 
@@ -224,9 +213,13 @@ def build_models():
                 (
                     "model",
                     LogisticRegression(
-                        max_iter=1000,
+                        C=0.5,
+                        penalty="l2",
+                        solver="liblinear",
+                        class_weight="balanced",
+                        max_iter=5000,
                         random_state=42,
-                    ),
+                    )
                 ),
             ]
         ),
@@ -240,9 +233,13 @@ def build_models():
                 (
                     "model",
                     RandomForestClassifier(
-                        n_estimators=300,
+                        n_estimators=500,
+                        max_depth=8,
+                        min_samples_split=4,
+                        min_samples_leaf=2,
+                        class_weight="balanced",
                         random_state=42,
-                    ),
+                    )
                 ),
             ]
         ),
@@ -256,9 +253,12 @@ def build_models():
                 (
                     "model",
                     SVC(
+                        C=2,
+                        kernel="rbf",
+                        gamma="scale",
                         probability=True,
                         random_state=42,
-                    ),
+                    )
                 ),
             ]
         ),
@@ -348,23 +348,61 @@ def train_selected_model(
     y_train,
 ):
 
-    best_model = models[best_model_name]
-
     print("\n" + "=" * 65)
-
-    print("TRAINING SELECTED MODEL")
-
+    print("HYPERPARAMETER TUNING")
     print("=" * 65)
 
-    print(f"\nSelected using CV: {best_model_name}")
+    pipeline = models[best_model_name]
 
-    best_model.fit(
-        X_train,
-        y_train,
+    param_grid = {}
+
+    if best_model_name == "Logistic Regression":
+        param_grid = {
+            "model__C": [0.01, 0.1, 0.5, 1, 2, 5, 10],
+            "model__solver": ["liblinear", "lbfgs"],
+            "model__penalty": ["l2"],
+            "model__class_weight": [None, "balanced"],
+            "model__max_iter": [1000, 3000, 5000],
+        }
+
+    elif best_model_name == "Random Forest":
+        param_grid = {
+            "model__n_estimators": [200, 300, 500],
+            "model__max_depth": [5, 8, 10, None],
+            "model__min_samples_split": [2, 4, 6],
+            "model__min_samples_leaf": [1, 2],
+        }
+
+    elif best_model_name == "Support Vector Machine":
+        param_grid = {
+            "model__C": [0.1, 1, 2, 5, 10],
+            "model__kernel": ["linear", "rbf"],
+            "model__gamma": ["scale", "auto"],
+        }
+
+    cv = StratifiedKFold(
+        n_splits=10,
+        shuffle=True,
+        random_state=42,
     )
 
-    return best_model
+    search = GridSearchCV(
+        estimator=pipeline,
+        param_grid=param_grid,
+        scoring="accuracy",
+        cv=cv,
+        n_jobs=-1,
+        verbose=2,
+    )
 
+    search.fit(X_train, y_train)
+
+    print("\nBest Parameters:")
+    print(search.best_params_)
+
+    print(f"\nBest CV Accuracy: {search.best_score_:.4f}")
+
+    return search.best_estimator_
 
 # --------------------------------------------------
 # FINAL TEST EVALUATION
