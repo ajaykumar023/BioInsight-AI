@@ -5,7 +5,19 @@ from pathlib import Path
 
 import pandas as pd
 import streamlit as st
+from io import BytesIO
 
+from reportlab.lib import colors
+from reportlab.lib.enums import TA_CENTER
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.units import inch
+from reportlab.platypus import (
+    SimpleDocTemplate,
+    Paragraph,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 # ==================================================
 # PROJECT PATH CONFIGURATION
@@ -133,31 +145,28 @@ with st.sidebar:
         label="Dataset Size",
         value="303 Patients"
     )
+    st.sidebar.markdown("---")
 
-    st.divider()
+    st.sidebar.success("✅ AI Engine Ready")
 
-    st.subheader("📋 Navigation")
+    st.sidebar.markdown(
+    """
+    ### 📌 About
 
-    page = st.radio(
-        "",
-        [
-            "🏠 Home",
-            "🩺 Patient Prediction",
-            "📊 Explainability",
-            "📈 Model Performance",
-            "👨‍💻 Developers",
-        ]
+    🧬 **BioInsight-AI** combines Machine Learning and SHAP Explainability to assist in heart disease risk prediction.
+
+    **Features**
+    - ❤️ Heart Disease Prediction
+    - 🧠 SHAP Explainability
+    - 📄 PDF Report Generation
+    - 📊 Risk Gauge
+    - 💡 Clinical Recommendations
+
+    ---
+    ⚠️ Educational & Research Use Only.
+    """
     )
 
-    st.divider()
-
-    st.info(
-        """
-This project demonstrates Explainable AI for Heart Disease Prediction.
-
-Developed for educational and research purposes.
-"""
-    )
 # ==================================================
 # HUMAN-READABLE FEATURE NAMES
 # ==================================================
@@ -421,141 +430,127 @@ def get_model_output_band(probability):
 # BUILD DOWNLOADABLE PATIENT REPORT
 # ==================================================
 
-def build_patient_report(
+def build_patient_pdf(
     patient_data,
     prediction_label,
     heart_disease_probability,
     predicted_confidence,
     output_band,
-    positive_factors,
-    negative_factors,
 ):
 
-    lines = []
+    buffer = BytesIO()
 
-    lines.append("=" * 65)
+    doc = SimpleDocTemplate(buffer)
 
-    lines.append(
-        "BIOINSIGHT-AI PATIENT ANALYSIS REPORT"
+    styles = getSampleStyleSheet()
+
+    title = styles["Heading1"]
+    title.alignment = TA_CENTER
+
+    story = []
+
+    story.append(
+        Paragraph(
+            "BioInsight-AI Patient Report",
+            title,
+        )
     )
 
-    lines.append("=" * 65)
-
-    lines.append("")
-
-    lines.append(
-        "MODEL OUTPUT SUMMARY"
+    story.append(
+        Spacer(1,0.3*inch)
     )
 
-    lines.append("-" * 65)
-
-    lines.append(
-        f"Prediction: {prediction_label}"
+    story.append(
+        Paragraph(
+            "<b>Prediction:</b> "
+            + prediction_label,
+            styles["BodyText"]
+        )
     )
 
-    lines.append(
-        "Heart Disease Probability: "
-        f"{heart_disease_probability:.2%}"
+    story.append(
+        Paragraph(
+            "<b>Heart Disease Probability:</b> "
+            + f"{heart_disease_probability:.1%}",
+            styles["BodyText"]
+        )
     )
 
-    lines.append(
-        "Prediction Confidence: "
-        f"{predicted_confidence:.2%}"
+    story.append(
+        Paragraph(
+            "<b>Prediction Confidence:</b> "
+            + f"{predicted_confidence:.1%}",
+            styles["BodyText"]
+        )
     )
 
-    lines.append(
-        f"Model Output Band: {output_band}"
+    story.append(
+        Paragraph(
+            "<b>Model Output Band:</b> "
+            + output_band,
+            styles["BodyText"]
+        )
     )
 
-    lines.append("")
-
-    lines.append(
-        "PATIENT INPUT DATA"
+    story.append(
+        Spacer(1,0.25*inch)
     )
 
-    lines.append("-" * 65)
+    data = [
+        ["Feature","Value"]
+    ]
 
-    for feature, value in patient_data.items():
+    for k,v in patient_data.items():
 
-        readable_feature = (
-            feature
-            .replace("_", " ")
-            .title()
+        data.append(
+            [
+                k.replace("_"," ").title(),
+                str(v),
+            ]
         )
 
-        lines.append(
-            f"{readable_feature}: {value}"
+    table = Table(data)
+
+    table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND",(0,0),(-1,0),colors.darkblue),
+                ("TEXTCOLOR",(0,0),(-1,0),colors.white),
+                ("GRID",(0,0),(-1,-1),1,colors.grey),
+                ("BACKGROUND",(0,1),(-1,-1),colors.beige),
+                ("BOTTOMPADDING",(0,0),(-1,0),10),
+            ]
         )
-
-    lines.append("")
-
-    lines.append(
-        "FACTORS PUSHING TOWARD HEART DISEASE"
     )
 
-    lines.append("-" * 65)
+    story.append(table)
 
-    if positive_factors.empty:
+    story.append(
+        Spacer(1,0.3*inch)
+    )
 
-        lines.append(
-            "No positive SHAP contributions available."
+    story.append(
+        Paragraph(
+            "<b>Disclaimer</b>",
+            styles["Heading2"],
         )
-
-    else:
-
-        for _, row in positive_factors.iterrows():
-
-            lines.append(
-                f"{row['display_feature']}: "
-                f"{row['shap_value']:.4f}"
-            )
-
-    lines.append("")
-
-    lines.append(
-        "FACTORS PUSHING TOWARD NO HEART DISEASE"
     )
 
-    lines.append("-" * 65)
-
-    if negative_factors.empty:
-
-        lines.append(
-            "No negative SHAP contributions available."
+    story.append(
+        Paragraph(
+            "BioInsight-AI is an educational AI project. "
+            "This report must not replace medical diagnosis.",
+            styles["BodyText"],
         )
-
-    else:
-
-        for _, row in negative_factors.iterrows():
-
-            lines.append(
-                f"{row['display_feature']}: "
-                f"{row['shap_value']:.4f}"
-            )
-
-    lines.append("")
-
-    lines.append("=" * 65)
-
-    lines.append("DISCLAIMER")
-
-    lines.append("-" * 65)
-
-    lines.append(
-        "BioInsight-AI is an educational machine learning "
-        "and explainable AI project."
     )
 
-    lines.append(
-        "Model outputs and SHAP explanations are not medical "
-        "diagnoses and must not replace evaluation by qualified "
-        "healthcare professionals."
-    )
+    doc.build(story)
 
-    lines.append("=" * 65)
+    pdf = buffer.getvalue()
 
-    return "\n".join(lines)
+    buffer.close()
 
+    return pdf
 
 # ==================================================
 # LOAD AI ENGINE
@@ -1726,53 +1721,39 @@ if submitted:
                 )
 
 
-                patient_report = (
-                    build_patient_report(
+                
+                pdf_data = build_patient_pdf(
 
-                        patient_data=
-                            patient_data,
+                    patient_data=
+                        patient_data,
 
-                        prediction_label=
-                            prediction_label,
+                    prediction_label=
+                        prediction_label,
 
-                        heart_disease_probability=
-                            heart_disease_probability,
+                    heart_disease_probability=
+                        heart_disease_probability,
 
-                        predicted_confidence=
-                        predicted_class_probability,
+                    predicted_confidence=predicted_class_probability,
 
-                        output_band=
-                            output_band,
+                    output_band=
+                        output_band,
 
-                        positive_factors=
-                            positive_factors,
-
-                        negative_factors=
-                            negative_factors,
-                    )
                 )
-
-
+                
                 st.write(
                     "Download a text summary containing "
                     "the model prediction, probability, "
                     "patient inputs, SHAP explanation "
                     "factors, and project disclaimer."
                 )
-
-
                 st.download_button(
-                    label=
-                        "Download Analysis Report",
+                    label="📄 Download Analysis Report",
 
-                    data=
-                        patient_report,
+                    data=pdf_data,
 
-                    file_name=
-                        "bioinsight_ai_patient_report.txt",
+                    file_name="bioinsight_ai_patient_report.pdf",
 
-                    mime=
-                        "text/plain",
+                    mime="application/pdf",
 
                     width="stretch",
 
