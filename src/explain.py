@@ -376,11 +376,17 @@ def create_shap_explainer(
     X_train_transformed,
 ):
 
-    return shap.LinearExplainer(
-        model,
+    # SHAP explainer for SVM
+    background = shap.sample(
         X_train_transformed,
+        100,
+        random_state=42,
     )
 
+    return shap.KernelExplainer(
+        model.predict_proba,
+        background,
+    )
 
 # ==================================================
 # GLOBAL SHAP ANALYSIS
@@ -590,20 +596,34 @@ def explain_patient(
         columns=feature_names,
     )
 
-    patient_explanation = explainer(
-        transformed_patient_df
-    )[0]
+    # Get SHAP values using KernelExplainer
+    shap_values = explainer.shap_values(
+        transformed_patient_df,
+        nsamples=100
+    )
 
-    contributions_df = pd.DataFrame(
-        {
-            "feature": feature_names,
-            "transformed_value": (
-                patient_explanation.data
-            ),
-            "shap_value": (
-                patient_explanation.values
-            ),
-        }
+    # Binary classification
+    import numpy as np
+
+    if isinstance(shap_values, list):
+        patient_shap_values = shap_values[1][0]
+
+    else:
+        patient_shap_values = np.array(shap_values)
+
+        # (25,2) -> take class 1
+        if patient_shap_values.ndim == 2:
+            patient_shap_values = patient_shap_values[:, 1]
+
+        # (1,25,2)
+        elif patient_shap_values.ndim == 3:
+            patient_shap_values = patient_shap_values[0, :, 1]
+    
+    contributions_df = pd.DataFrame({
+        "feature": feature_names,
+        "transformed_value": transformed_patient_df.iloc[0].values,
+        "shap_value": patient_shap_values,
+    }
     )
 
     contributions_df["absolute_shap"] = (
@@ -676,9 +696,7 @@ def explain_patient(
         "toward_no_heart_disease": (
             toward_negative_class
         ),
-        "shap_explanation": (
-            patient_explanation
-        ),
+        "shap_explanation": patient_shap_values,
     }
 
     return result
