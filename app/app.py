@@ -1,3 +1,4 @@
+import plotly.graph_objects as go
 import time
 import sys
 from pathlib import Path
@@ -1222,6 +1223,150 @@ if submitted:
 
                 else:
                     st.error("🔴 High Risk")
+
+                # ==================================================
+                # HEART DISEASE RISK GAUGE
+                # ==================================================
+
+                st.markdown("<br>", unsafe_allow_html=True)
+
+                left, center, right = st.columns([1,5,1])
+
+                with center:
+
+                    gauge = go.Figure(
+                        go.Indicator(
+                            mode="gauge+number",
+                            value=heart_disease_probability * 100,
+                            number={"suffix": "%"},
+                            title={"text": "Estimated Risk"},
+                            gauge={
+                                "axis": {"range": [0, 100]},
+                                "bar": {"color": "#E53935"},
+                                "steps": [
+                                    {"range": [0, 30], "color": "#4CAF50"},
+                                    {"range": [30, 70], "color": "#FFC107"},
+                                    {"range": [70, 100], "color": "#F44336"},
+                                ],
+                                "threshold": {
+                                    "line": {"color": "white", "width": 4},
+                                    "thickness": 0.8,
+                                    "value": heart_disease_probability * 100,
+                                },
+                            },
+                        )
+                    )
+
+                    gauge.update_layout(
+                        paper_bgcolor="#0E1117",
+                        font=dict(color="white", size=18),
+                        height=340,
+                        margin=dict(l=20, r=20, t=40, b=10),
+                    )
+
+                    st.markdown(
+                        """
+                        <div style="text-align:center; margin-bottom:10px;">
+                            <h2>🎯 Heart Disease Risk Gauge</h2>
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+
+                    st.plotly_chart(
+                        gauge,
+                        use_container_width=True,
+                        config={"displayModeBar": False},
+                    )
+            st.divider()
+
+            st.subheader("🩺 Clinical Recommendation")
+            if heart_disease_probability < 0.30:
+
+                st.success("""
+            ### ✅ Low Estimated Risk
+
+            The AI model estimates a low likelihood of heart disease.
+
+            **Recommendations**
+
+            • Continue a healthy lifestyle.
+
+            • Maintain regular exercise.
+
+            • Eat a balanced diet.
+
+            • Schedule routine health checkups.
+            """)
+
+            elif heart_disease_probability < 0.70:
+
+                st.warning("""
+            ### ⚠ Moderate Estimated Risk
+
+            The AI model estimates a moderate likelihood of heart disease.
+
+            **Recommendations**
+
+            • Consult a healthcare professional.
+
+            • Monitor blood pressure and cholesterol.
+
+            • Improve lifestyle habits.
+
+            • Consider additional clinical evaluation.
+            """)
+
+            else:
+
+                st.error("""
+            ### 🚨 High Estimated Risk
+
+            The AI model estimates a high likelihood of heart disease.
+
+            **Recommendations**
+
+            • Seek medical attention.
+
+            • Schedule a cardiac evaluation.
+
+            • Do not rely solely on AI predictions.
+
+            • Follow physician recommendations.
+            """)
+            st.divider()
+
+            st.subheader("🧠 AI Interpretation")
+
+            if prediction == 1:
+
+                st.info(f"""
+            ### Why did the AI predict Heart Disease?
+
+            The machine learning model estimates a **{heart_disease_probability:.1%}**
+            probability of heart disease.
+
+            The SHAP explainability engine identified the clinical features that most
+            strongly pushed the prediction toward the **Heart Disease** class.
+
+            This prediction should always be interpreted together with a healthcare
+            professional.
+            """)
+
+            else:
+
+                st.info(f"""
+            ### Why did the AI predict No Heart Disease?
+
+            The machine learning model estimates only a **{heart_disease_probability:.1%}**
+            probability of heart disease.
+
+            The SHAP explainability engine found that the patient's clinical features
+            were more consistent with the **No Heart Disease** class.
+
+            This prediction should be considered an AI-assisted estimate and not a
+            medical diagnosis.
+            """)
 
             # ==========================================
             # CONFIDENCE
