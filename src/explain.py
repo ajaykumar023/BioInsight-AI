@@ -391,6 +391,45 @@ def create_shap_explainer(
 # ==================================================
 # GLOBAL SHAP ANALYSIS
 # ==================================================
+def clean_feature_name(feature_name):
+
+    feature_name = feature_name.replace(
+        "numerical__",
+        "",
+    )
+
+    feature_name = feature_name.replace(
+        "categorical__",
+        "",
+    )
+
+    feature_name = feature_name.replace(
+        "_",
+        " ",
+    )
+
+    feature_name = feature_name.title()
+
+    replacements = {
+        "Cp": "Chest Pain",
+        "Trestbps": "Resting Blood Pressure",
+        "Chol": "Cholesterol",
+        "Thalach": "Maximum Heart Rate",
+        "Oldpeak": "ST Depression",
+        "Ca": "Number Of Major Vessels",
+        "Thal": "Thalassemia",
+        "Exang": "Exercise Induced Angina",
+        "Fbs": "Fasting Blood Sugar",
+        "Restecg": "Resting ECG",
+        "Slope": "ST Slope",
+        "Sex Male": "Sex (Male)",
+        "Sex Female": "Sex (Female)",
+    }
+
+    return replacements.get(
+        feature_name,
+        feature_name,
+    )
 
 def create_global_shap_analysis(
     explainer,
@@ -411,7 +450,10 @@ def create_global_shap_analysis(
 
     shap_importance_df = pd.DataFrame(
         {
-            "feature": X_test_transformed.columns,
+            "feature": [
+                clean_feature_name(feature)
+                for feature in X_test_transformed.columns
+            ],
             "mean_absolute_shap": mean_absolute_shap,
         }
     )

@@ -4,6 +4,7 @@ import joblib
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from xgboost import XGBClassifier
 from sklearn.compose import ColumnTransformer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.impute import SimpleImputer
@@ -233,10 +234,12 @@ def build_models():
                 (
                     "model",
                     RandomForestClassifier(
-                        n_estimators=500,
-                        max_depth=8,
-                        min_samples_split=4,
-                        min_samples_leaf=2,
+                        n_estimators=1000,
+                        max_depth=None,
+                        min_samples_split=2,
+                        min_samples_leaf=1,
+                        max_features="sqrt",
+                        bootstrap=True,
                         class_weight="balanced",
                         random_state=42,
                     )
@@ -259,6 +262,27 @@ def build_models():
                         probability=True,
                         random_state=42,
                     )
+                ),
+            ]
+        ),
+    
+        "XGBoost": Pipeline(
+            steps=[
+                (
+                    "preprocessor",
+                    build_preprocessor(),
+                ),
+                (
+                    "model",
+                    XGBClassifier(
+                        n_estimators=300,
+                        learning_rate=0.05,
+                        max_depth=4,
+                        subsample=0.8,
+                        colsample_bytree=0.8,
+                        eval_metric="logloss",
+                        random_state=42,
+                    ),
                 ),
             ]
         ),
@@ -375,13 +399,26 @@ def train_selected_model(
 
     elif best_model_name == "Support Vector Machine":
         param_grid = {
-            "model__C": [0.1, 1, 2, 5, 10],
-            "model__kernel": ["linear", "rbf"],
-            "model__gamma": ["scale", "auto"],
+            "model__C": [0.01, 0.1, 1, 2, 5, 10, 20, 50],
+            "model__kernel": ["rbf"],
+            "model__gamma": [
+                "scale",
+                "auto",
+                0.001,
+                0.01,
+                0.1,
+            ],
         }
-
+    elif best_model_name == "XGBoost":
+        param_grid = {
+            "model__n_estimators": [200, 300, 500],
+            "model__max_depth": [3, 4, 5],
+            "model__learning_rate": [0.01, 0.05, 0.1],
+            "model__subsample": [0.8, 1.0],
+            "model__colsample_bytree": [0.8, 1.0],
+        }
     cv = StratifiedKFold(
-        n_splits=10,
+        n_splits=15,
         shuffle=True,
         random_state=42,
     )
@@ -389,7 +426,7 @@ def train_selected_model(
     search = GridSearchCV(
         estimator=pipeline,
         param_grid=param_grid,
-        scoring="accuracy",
+        scoring="roc_auc",
         cv=cv,
         n_jobs=-1,
         verbose=2,
@@ -400,7 +437,7 @@ def train_selected_model(
     print("\nBest Parameters:")
     print(search.best_params_)
 
-    print(f"\nBest CV Accuracy: {search.best_score_:.4f}")
+    print(f"\nBest CV ROC-AUC: {search.best_score_:.4f}")
 
     return search.best_estimator_
 

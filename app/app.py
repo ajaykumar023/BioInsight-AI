@@ -128,27 +128,28 @@ div[data-baseweb="notification"]{
 with st.sidebar:
 
     st.markdown("# 🧬 BioInsight-AI")
-    st.caption("Version 1.0")
+    st.caption("Version 2.0")
 
     st.divider()
 
     st.subheader("🧠 AI Engine")
 
-    st.success("✅ Logistic Regression")
+    st.success("✅ Support Vector Machine")
     st.success("✅ SHAP Explainability")
 
+    
     st.metric(
         label="Model Accuracy",
-        value="86.9%"
+        value="87%"
     )
 
     st.metric(
         label="Dataset Size",
-        value="303 Patients"
+        value="920 Patients"
     )
     st.sidebar.markdown("---")
 
-    st.sidebar.success("✅ AI Engine Ready")
+    st.sidebar.success("✅ ✓ AI Model Validated")
 
     st.sidebar.markdown(
     """
@@ -165,7 +166,22 @@ with st.sidebar:
 
     ---
     ⚠️ Educational & Research Use Only.
+
+    ---
+
+    - BioInsight-AI v-2.0
+    - Developed by - M Ajay Kumar & Amogh Amarapur
+
+    ---
+
+    **Built with**
+    - Python
+    - Scikit-Learn
+    - SHAP
+    - Plotly
+    - Streamlit
     """
+    
     )
 
 # ==================================================
@@ -652,25 +668,25 @@ col1, col2, col3, col4 = st.columns(4)
 with col1:
     st.metric(
     "Model",
-    "Logistic"
+    "SVM"
 )
 
 with col2:
     st.metric(
         "Accuracy",
-        "86.9%"
+        "87%"
     )
 
 with col3:
     st.metric(
         "Dataset",
-        "303 Patients"
+        "920 Patients"
     )
 
 with col4:
     st.metric(
-        "Explainability",
-        "SHAP AI"
+        "ROC-AUC",
+        "91.7%"
     )
 
 st.info(
@@ -693,8 +709,8 @@ st.divider()
 if engine_ready:
 
     st.success(
-        "AI prediction and explainability engine "
-        "loaded successfully."
+        "Support Vector Machine model loaded successfully. "
+        " SHAP Explainability initialized."
     )
 
 else:
@@ -1916,6 +1932,6 @@ Developed by **M Ajay Kumar** & **Amogh Amarapur**
 
 ⚠ This application is **not** intended to replace professional medical diagnosis.
 
-Version **1.0**
+Version **2.0**
 """
 )
