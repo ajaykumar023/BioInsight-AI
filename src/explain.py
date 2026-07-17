@@ -401,36 +401,25 @@ def create_global_shap_analysis(
         X_test_transformed
     )
 
+
     mean_absolute_shap = (
         abs(shap_values.values)
         .mean(axis=0)
+        .mean(axis=1)
     )
+
 
     shap_importance_df = pd.DataFrame(
         {
-            "feature": (
-                X_test_transformed.columns
-            ),
-            "mean_absolute_shap": (
-                mean_absolute_shap
-            ),
+            "feature": X_test_transformed.columns,
+            "mean_absolute_shap": mean_absolute_shap,
         }
-    )
-
-    shap_importance_df = (
-        shap_importance_df
-        .sort_values(
-            by="mean_absolute_shap",
-            ascending=False,
-        )
-        .reset_index(drop=True)
     )
 
     return (
         shap_values,
         shap_importance_df,
     )
-
 
 # ==================================================
 # SAVE GLOBAL SHAP OUTPUTS

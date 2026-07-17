@@ -2,7 +2,7 @@ import plotly.graph_objects as go
 import time
 import sys
 from pathlib import Path
-
+import plotly.express as px
 import pandas as pd
 import streamlit as st
 from io import BytesIO
@@ -36,6 +36,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from src.explain import (
     create_shap_explainer,
     explain_patient,
+    create_global_shap_analysis,
     extract_pipeline_components,
     get_feature_names,
     load_data,
@@ -565,15 +566,9 @@ def load_ai_engine():
 
     X_train, X_test, _, _ = split_data(df)
 
-    preprocessor, model = (
-        extract_pipeline_components(
-            pipeline
-        )
-    )
+    preprocessor, model = extract_pipeline_components(pipeline)
 
-    feature_names = get_feature_names(
-        preprocessor
-    )
+    feature_names = get_feature_names(preprocessor)
 
     X_train_transformed, _ = transform_data(
         preprocessor,
@@ -587,13 +582,23 @@ def load_ai_engine():
         X_train_transformed,
     )
 
+    sample_data = X_train_transformed.sample(
+        n=10,
+        random_state=42,
+    )
+
+    shap_values, shap_importance_df = create_global_shap_analysis(
+        explainer,
+        sample_data,
+    )
+
+
     return (
         pipeline,
         explainer,
         feature_names,
+        shap_importance_df,
     )
-
-
 # ==================================================
 # INITIALIZE AI ENGINE
 # ==================================================
@@ -604,6 +609,7 @@ try:
         pipeline,
         explainer,
         feature_names,
+        shap_importance_df,
     ) = load_ai_engine()
 
     engine_ready = True
@@ -1640,7 +1646,48 @@ if submitted:
                         negative_factors,
                         "Negative Contributions",
                     )
+                
+                st.divider()
 
+                st.header("📊 Global Feature Importance")
+
+                st.markdown(
+                    """
+                These features are the most influential across the entire dataset
+                according to SHAP values.
+                """
+                )
+
+                try:
+
+                    global_shap = shap_importance_df.head(10)
+
+                    fig = px.bar(
+                        global_shap.sort_values("mean_absolute_shap"),
+                        x="mean_absolute_shap",
+                        y="feature",
+                        orientation="h",
+                        title="Top 10 Most Important Clinical Features",
+                    )
+
+                    fig.update_layout(
+                        height=500,
+                        xaxis_title="Mean |SHAP Value|",
+                        yaxis_title="Feature",
+                    )
+
+                    st.plotly_chart(fig, use_container_width=True)
+
+                    st.dataframe(
+                        global_shap,
+                        use_container_width=True,
+                    )
+
+                except Exception as e:
+
+                    st.warning(
+                        f"Unable to generate global SHAP importance: {e}"
+                    )
 
                 # ==================================
                 # TOP OVERALL MODEL INFLUENCES
