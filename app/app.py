@@ -1141,7 +1141,7 @@ if submitted:
             status.info("🧠 Initializing BioInsight-AI...")
             time.sleep(0.4)
 
-            status.info("📂 Loading trained Logistic Regression model...")
+            status.info("📂 Loading trained Support Vector Machine model...")
             time.sleep(0.4)
 
             status.info("🧪 Validating patient information...")
@@ -1924,7 +1924,7 @@ st.markdown(
 
 Developed by **M Ajay Kumar** & **Amogh Amarapur**
 
-**Machine Learning:** Logistic Regression
+**Machine Learning:**  Support Vector Machine (SVM)
 
 **Explainability:** SHAP (SHapley Additive Explanations)
 
