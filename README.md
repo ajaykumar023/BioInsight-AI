@@ -30,7 +30,7 @@ The project uses the Cleveland Heart Disease dataset.
 
 Dataset characteristics:
 
-- 303 patient records
+- 920 patient records
 - 13 input features
 - 1 target variable
 - Binary classification task
